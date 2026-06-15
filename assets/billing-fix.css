@@ -701,7 +701,7 @@ section.content {
 
 .bill-filters {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -726,7 +726,7 @@ section.content {
 
 .bill-col-expand { width: 40px; text-align: center; vertical-align: middle !important; }
 .bill-col-actions { white-space: nowrap; min-width: 140px; }
-.bill-col-menu { width: 44px; text-align: center; }
+.bill-col-menu { width: 90px; text-align: center; white-space: nowrap; }
 
 .bill-expand-btn {
   width: 32px;

@@ -69,19 +69,22 @@
 </h1>
 </section>
 <section class="content">
-<div class="alert alert-info poc-alert-flow"><strong>Passo 2.</strong> Cada vínculo ativo gera um faturamento em aberto. Use <strong>Notas</strong> para ver as NF-e, ajuste o <strong>desconto no total</strong> em Detalhes → Resumo (enquanto em aberto), depois feche e envie.</div>
+<div class="alert alert-info poc-alert-flow"><strong>Passo 2.</strong> Cada vínculo ativo gera um faturamento em aberto no período. Confira <strong>Notas</strong> e <strong>Consumo</strong>, aplique ajustes com justificativa em <strong>Detalhes → Ajustes</strong>, feche o faturamento e envie o e-mail com o link do portal (as notas não são anexadas).</div>
 <div class="box-solid tw-mb-4 tw-transition-all tw-duration-200 tw-bg-white tw-shadow-sm tw-rounded-xl tw-ring-1 hover:tw-shadow-md tw-ring-gray-200">
 <div class="tw-p-2 sm:tw-p-3">
 <div class="bill-tabs">
 <button type="button" class="bill-tab-btn bill-tab-active" data-tab="open">Em aberto</button>
 <button type="button" class="bill-tab-btn" data-tab="closed">Fechados</button>
 </div>
-<div class="bill-filters" style="grid-template-columns:repeat(5,1fr)">
-<div><label>Cliente</label><select class="form-control"><option>Todos</option></select></div>
-<div><label>Empresa</label><select class="form-control"><option>Todos</option></select></div>
-<div><label>Frota</label><select class="form-control"><option>Todos</option></select></div>
-<div><label>Período de referência</label><input type="text" class="form-control" value="Maio/2026" readonly></div>
-<div><label>Enviado</label><select class="form-control"><option>Todos</option><option>Sim</option><option>Não</option></select></div>
+<div class="bill-filters" style="grid-template-columns:repeat(4,1fr)">
+<div><label>Empresa</label><select class="form-control" id="flt-c-company"><option value="">Todos</option></select></div>
+<div><label>Frota</label><select class="form-control" id="flt-c-fleet"><option value="">Todos</option></select></div>
+<div><label>Modelo de faturamento</label><select class="form-control" id="flt-c-config"><option value="">Todos</option></select></div>
+<div><label>Status</label><select class="form-control" id="flt-c-status"><option value="">Todos</option></select></div>
+<div><label>Data de vencimento</label><input type="date" class="form-control" id="flt-c-due"></div>
+<div><label>Valor mínimo (R$)</label><input type="number" min="0" step="0.01" class="form-control" id="flt-c-min" placeholder="0,00"></div>
+<div><label>Valor máximo (R$)</label><input type="number" min="0" step="0.01" class="form-control" id="flt-c-max" placeholder="0,00"></div>
+<div><label>Enviado</label><select class="form-control" id="flt-c-sent"><option value="">Todos</option><option value="yes">Sim</option><option value="no">Não</option></select></div>
 </div>
 <div class="tw-flow-root tw-border-gray-200">
 <div class="tw-py-2 tw-align-middle sm:tw-px-5">
@@ -97,7 +100,7 @@
 </div>
 <table class="table table-bordered table-striped dataTable">
 <thead><tr>
-<th>Ação</th><th>Cliente / Empresa</th><th>Frota</th><th>Tipo faturamento</th><th>Período ref.</th><th>Notas</th><th>Valor bruto</th><th>Desc./Acr.</th><th>Valor líquido</th><th>Vencimento</th><th>Status</th><th>Enviado em</th>
+<th>Código</th><th>Empresa / Cliente</th><th>Frota</th><th>Modelo de faturamento</th><th>Período de referência</th><th>Notas</th><th>Valor bruto</th><th>Desc./Acr.</th><th>Valor líquido</th><th>Vencimento</th><th>Status</th><th>Enviado em</th><th>Ações</th>
 </tr></thead>
 <tbody id="tbody-cycles"></tbody>
 </table>
@@ -115,6 +118,15 @@
 </div>
 <div class="overlay tw-hidden" id="poc-overlay"></div>
 <div class="modal fade poc_modal bill_modal" tabindex="-1" role="dialog" aria-labelledby="gridSystemModalLabel"></div>
+<div class="modal fade" id="modal-generic" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-md" role="document">
+    <div class="modal-content">
+      <div class="modal-header"><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button><h4 class="modal-title"></h4></div>
+      <div class="modal-body"></div>
+      <div class="modal-footer"></div>
+    </div>
+  </div>
+</div>
 <div id="poc-toast" class="poc-toast-wrap"></div>
 <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.4.1/dist/js/bootstrap.min.js"></script>
