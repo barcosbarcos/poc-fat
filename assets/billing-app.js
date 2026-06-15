@@ -160,13 +160,23 @@ var BillingPages = {
         var isRemoved = l.status !== "active";
         var rowStyle = isRemoved ? ' style="opacity:.5"' : "";
         var removedBadge = isRemoved ? ' <span class="label label-default">Removido</span>' : "";
+        var lkRules = l.discount_rules || [];
+        var adjTxt = BillingLabels.adjustment(l.specific_adjustment_type, l.specific_adjustment_mode, l.specific_adjustment_value);
+        var discountCell = adjTxt !== "—"
+          ? '<small>' + adjTxt + '</small>'
+          : "";
+        if (lkRules.length) {
+          discountCell += (discountCell ? "<br>" : "") +
+            '<span class="label label-success"><i class="fa fa-tag"></i> ' + lkRules.length + ' regra' + (lkRules.length > 1 ? "s" : "") + ' por produto</span>';
+        }
+        if (!discountCell) discountCell = '<span class="text-muted">—</span>';
         return (
           "<tr" + rowStyle + ">" +
           "<td>" + (comp ? BillingUI.esc(comp.name) : "—") + removedBadge + "</td>" +
-          "<td>" + (comp ? comp.cnpj : "—") + "</td>" +
+          "<td style='font-size:12px'>" + (comp ? comp.cnpj : "—") + "</td>" +
           "<td>" + (fleet ? BillingUI.esc(fleet.name) : "—") + "</td>" +
           "<td>" + BillingLabels.creditLimit(l.specific_credit_limit) + "</td>" +
-          "<td>" + BillingLabels.adjustment(l.specific_adjustment_type, l.specific_adjustment_mode, l.specific_adjustment_value) + "</td>" +
+          "<td>" + discountCell + "</td>" +
           "<td>" + BillingStore.formatDateRange(l.valid_from, l.valid_until) + "</td>" +
           '<td class="bill-col-actions">' +
           (!isRemoved
@@ -179,7 +189,7 @@ var BillingPages = {
       return (
         head +
         '<div class="table-responsive"><table class="table table-bordered bill-subtable">' +
-        "<thead><tr><th>Empresa</th><th>CNPJ</th><th>Frota</th><th>Limite de crédito</th><th>Desc./Acr. específico</th><th>Vigência do vínculo</th><th>Ações</th></tr></thead>" +
+        "<thead><tr><th>Empresa</th><th>CNPJ</th><th>Frota</th><th>Limite</th><th>Descontos</th><th>Vigência</th><th>Ações</th></tr></thead>" +
         "<tbody>" + rows + "</tbody></table></div>"
       );
     }
@@ -282,14 +292,15 @@ var BillingPages = {
       return target + " — <span class='bill-adj-down'>− " + val + "</span> (prioridade " + r.priority + ")";
     }
 
-    function discountRulesTableHtml(rules) {
+    function discountRulesTableHtml(rules, btnClass) {
       rules = rules || [];
+      btnClass = btnClass || "btn-remove-discount-rule";
       if (!rules.length) {
         return '<p class="text-muted" style="margin:6px 0">Nenhuma regra de desconto por produto cadastrada.</p>';
       }
       var rows = rules.map(function (r, idx) {
         return "<tr><td>" + discountRuleLabel(r) + "</td>" +
-          '<td><button type="button" class="btn btn-danger btn-xs btn-remove-discount-rule" data-idx="' + idx + '"><i class="fa fa-times"></i></button></td></tr>';
+          '<td><button type="button" class="btn btn-danger btn-xs ' + btnClass + '" data-idx="' + idx + '"><i class="fa fa-times"></i></button></td></tr>';
       }).join("");
       return '<table class="table table-condensed" style="margin:0"><tbody>' + rows + "</tbody></table>";
     }
@@ -399,7 +410,6 @@ var BillingPages = {
           if (dv) dv.value = "";
         };
       }
-      bindRuleButtons();
     }
 
     function readConfigForm(existing) {
@@ -460,17 +470,19 @@ var BillingPages = {
       var compOpts = d.companies.map(function (c) { return '<option value="' + c.id + '"' + s(l.company_id, c.id) + ">" + BillingUI.esc(c.name) + "</option>"; }).join("");
       var hasAdj = l.specific_adjustment_type && l.specific_adjustment_type !== "none";
       var isFixed = l.specific_adjustment_mode === "fixed_amount";
+      var lkRules = l.discount_rules || [];
+      var lkRulesJson = JSON.stringify(lkRules).replace(/"/g, "&quot;");
       return (
-        '<p class="text-muted" style="margin-bottom:14px">O vínculo associa uma empresa e sua frota (centro de cobrança) a este modelo. Cada vínculo ativo gera automaticamente um faturamento em aberto por período. A frota disponível depende da empresa selecionada.</p>' +
+        '<p class="text-muted" style="margin-bottom:14px">O vínculo associa uma empresa e sua frota a este modelo. Cada vínculo ativo gera automaticamente um faturamento em aberto por período. Os descontos por produto definidos aqui <strong>sobrescrevem</strong> os do modelo.</p>' +
         '<div class="row">' +
         '<div class="col-md-6"><div class="form-group"><label>Empresa *</label><select class="form-control" id="lk_company"><option value="">Selecione...</option>' + compOpts + "</select></div></div>" +
         '<div class="col-md-6"><div class="form-group"><label>CNPJ</label><input type="text" class="form-control" id="lk_cnpj" value="" readonly placeholder="Preenchido automaticamente"></div></div>' +
         '<div class="col-md-6"><div class="form-group"><label>Frota *</label><select class="form-control" id="lk_fleet" disabled><option value="">Selecione a empresa primeiro</option></select></div></div>' +
-        '<div class="col-md-6"><div class="form-group"><label>Limite específico (R$)</label><input type="number" min="0" step="0.01" class="form-control" id="lk_limit" value="' + (l.specific_credit_limit === null || l.specific_credit_limit === undefined ? "" : l.specific_credit_limit) + '" placeholder="Usar limite padrão do modelo"></div></div>' +
-        '<div class="col-md-4"><div class="form-group"><label>Desconto/Acréscimo específico</label><select class="form-control" id="lk_adjtype">' +
+        '<div class="col-md-6"><div class="form-group"><label>Limite de crédito específico (R$)</label><input type="number" min="0" step="0.01" class="form-control" id="lk_limit" value="' + (l.specific_credit_limit === null || l.specific_credit_limit === undefined ? "" : l.specific_credit_limit) + '" placeholder="Usar limite padrão do modelo"></div></div>' +
+        '<div class="col-md-4"><div class="form-group"><label>Ajuste global específico</label><select class="form-control" id="lk_adjtype">' +
         '<option value="none"' + s(l.specific_adjustment_type, "none") + ">Nenhum (usar padrão)</option>" +
-        '<option value="discount"' + s(l.specific_adjustment_type, "discount") + ">Desconto</option>" +
-        '<option value="increase"' + s(l.specific_adjustment_type, "increase") + ">Acréscimo</option>" +
+        '<option value="discount"' + s(l.specific_adjustment_type, "discount") + ">Desconto global (%/R$)</option>" +
+        '<option value="increase"' + s(l.specific_adjustment_type, "increase") + ">Acréscimo global (%/R$)</option>" +
         "</select></div></div>" +
         '<div class="col-md-2" id="lk_adjmode_wrap" style="display:' + (hasAdj ? "block" : "none") + '"><div class="form-group"><label>Modo</label><select class="form-control" id="lk_adjmode">' +
         '<option value="percentage"' + s(l.specific_adjustment_mode, "percentage") + ">%</option>" +
@@ -483,6 +495,17 @@ var BillingPages = {
         '<option value="active"' + s(l.status, "active") + ">Ativo</option>" +
         '<option value="inactive"' + s(l.status, "inactive") + ">Inativo</option>" +
         "</select></div></div>" +
+        "</div>" +
+        '<hr style="margin:10px 0"><h5 style="margin-bottom:10px"><i class="fa fa-tag"></i> Descontos por produto deste vínculo</h5>' +
+        '<div class="alert alert-info poc-alert-compact"><i class="fa fa-info-circle"></i> Descontos específicos para esta empresa/frota. Quando definidos aqui, <strong>substituem</strong> os do modelo de faturamento. Ex.: R$ 0,02/L no Diesel S10.</div>' +
+        '<input type="hidden" id="lk_discount_rules" value="' + lkRulesJson + '">' +
+        '<div id="lk_discount_rules_table">' + discountRulesTableHtml(lkRules, "btn-remove-link-discount-rule") + "</div>" +
+        '<div class="row" style="margin-top:10px;background:#f8fafc;padding:10px;border-radius:6px;border:1px solid #e2e8f0">' +
+        '<div class="col-md-3"><div class="form-group" style="margin:0"><label style="font-size:12px">Alvo</label><select class="form-control input-sm" id="lk_nr_target_type"><option value="product">Produto específico</option><option value="category">Categoria</option><option value="all">Todos os produtos</option></select></div></div>' +
+        '<div class="col-md-3"><div class="form-group" style="margin:0"><label style="font-size:12px">Nome do produto/categoria</label><input type="text" class="form-control input-sm" id="lk_nr_target_name" placeholder="ex: Diesel S10"></div></div>' +
+        '<div class="col-md-2"><div class="form-group" style="margin:0"><label style="font-size:12px">Tipo</label><select class="form-control input-sm" id="lk_nr_dtype"><option value="fixed_per_unit">Fixo por unidade (R$/L)</option><option value="percentage">Percentual (%)</option></select></div></div>' +
+        '<div class="col-md-2"><div class="form-group" style="margin:0"><label style="font-size:12px">Valor</label><input type="number" min="0" step="0.001" class="form-control input-sm" id="lk_nr_dval" placeholder="0.02"></div></div>' +
+        '<div class="col-md-2" style="padding-top:20px"><button type="button" class="btn btn-primary btn-sm btn-add-link-discount-rule" style="width:100%"><i class="fa fa-plus"></i> Adicionar</button></div>' +
         "</div>"
       );
     }
@@ -518,6 +541,56 @@ var BillingPages = {
       adjtype.onchange = refreshAdj;
       adjmode.onchange = refreshAdj;
       if (selectedCompanyId) { companySel.value = selectedCompanyId; refreshFleets(); }
+
+      function getLkRules() {
+        var el = document.getElementById("lk_discount_rules");
+        if (!el) return [];
+        try { return JSON.parse(el.value || "[]"); } catch (e) { return []; }
+      }
+      function setLkRules(rules) {
+        var el = document.getElementById("lk_discount_rules");
+        if (el) el.value = JSON.stringify(rules);
+        var tbl = document.getElementById("lk_discount_rules_table");
+        if (tbl) tbl.innerHTML = discountRulesTableHtml(rules, "btn-remove-link-discount-rule");
+      }
+      var modal = document.querySelector(".poc_modal");
+      if (modal && !modal._lkRuleHandlerBound) {
+        modal._lkRuleHandlerBound = true;
+        modal.addEventListener("click", function (ev) {
+          var btn = ev.target.closest(".btn-remove-link-discount-rule");
+          if (!btn) return;
+          ev.preventDefault();
+          var rules = getLkRules();
+          rules.splice(Number(btn.dataset.idx), 1);
+          setLkRules(rules);
+        });
+      }
+      var addRuleBtn = document.querySelector(".btn-add-link-discount-rule");
+      if (addRuleBtn) {
+        addRuleBtn.onclick = function () {
+          var tt = document.getElementById("lk_nr_target_type");
+          var tn = document.getElementById("lk_nr_target_name");
+          var dt = document.getElementById("lk_nr_dtype");
+          var dv = document.getElementById("lk_nr_dval");
+          var name = tn ? tn.value.trim() : "";
+          var val = parseFloat(dv ? dv.value : "0") || 0;
+          if (!name && (tt ? tt.value : "all") !== "all") { BillingUI.toast("Informe o nome do produto ou categoria.", "warn"); return; }
+          if (!(val > 0)) { BillingUI.toast("Informe um valor de desconto maior que zero.", "warn"); return; }
+          var rules = getLkRules();
+          rules.push({
+            id: BillingStore.uid("dr"),
+            target_type: tt ? tt.value : "product",
+            target_name: name || "Todos",
+            discount_type: dt ? dt.value : "fixed_per_unit",
+            discount_unit: "L",
+            discount_value: val,
+            priority: rules.length + 1
+          });
+          setLkRules(rules);
+          if (tn) tn.value = "";
+          if (dv) dv.value = "";
+        };
+      }
     }
 
     function openLinkModal(configId, existing) {
@@ -528,6 +601,9 @@ var BillingPages = {
         function () {
           var g = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
           var comp = BillingStore.companyById(g("lk_company"));
+          var lkRulesEl = document.getElementById("lk_discount_rules");
+          var lkRules = [];
+          try { lkRules = JSON.parse(lkRulesEl ? lkRulesEl.value || "[]" : "[]"); } catch (e) { lkRules = []; }
           var link = {
             id: existing ? existing.id : BillingStore.uid("lnk"),
             configuration_id: configId,
@@ -540,7 +616,8 @@ var BillingPages = {
             specific_credit_limit: g("lk_limit") === "" ? null : Number(g("lk_limit")),
             valid_from: g("lk_from"),
             valid_until: g("lk_to") || null,
-            status: g("lk_status")
+            status: g("lk_status"),
+            discount_rules: lkRules
           };
           var err = BillingStore.validateLink(link, existing ? existing.id : null);
           if (err) { BillingUI.toast(err, "error"); return false; }
@@ -689,6 +766,10 @@ var BillingPages = {
       var canPay = ["closed", "sent", "resent", "overdue"].indexOf(c.status) >= 0;
       if (canPay) {
         items.push('<li><a href="#" class="btn-paid-cycle" data-id="' + id + '" style="color:#059669"><i class="fa fa-check-circle"></i> Marcar como Pago</a></li>');
+      }
+      if (BillingStore.isClosedGroupStatus(c.status)) {
+        items.push('<li class="divider"></li>');
+        items.push('<li><a href="#" class="btn-reopen-cycle" data-id="' + id + '" style="color:#b45309"><i class="fa fa-undo"></i> Reabrir faturamento</a></li>');
       }
       return (
         '<div class="btn-group">' +
@@ -955,7 +1036,12 @@ var BillingPages = {
           (totalRuleDisc > 0 ? '<button type="button" class="btn btn-default btn-sm btn-apply-rule-discount" data-val="' + totalRuleDisc.toFixed(2) + '" style="margin-right:8px"><i class="fa fa-tag"></i> Usar desconto calculado (' + BillingStore.formatMoney(totalRuleDisc) + ')</button>' : "") +
           '<button type="button" class="tw-dw-btn tw-dw-btn-sm tw-dw-btn-primary tw-text-white btn-apply-adjustments" data-cycle="' + c.id + '"><i class="fa fa-check"></i> Aplicar ajustes</button>' +
           "</div></div>"
-        : '<div class="alert alert-warning poc-alert-compact" style="margin-top:14px"><i class="fa fa-lock"></i> Faturamento fechado: valores congelados, ajustes bloqueados.</div>';
+        : c.status === "paid"
+          ? '<div class="alert alert-success poc-alert-compact" style="margin-top:14px"><i class="fa fa-check-circle"></i> Fatura marcada como paga. Use <strong>Reabrir faturamento</strong> no rodapé caso precise corrigir.</div>'
+          : '<div class="alert alert-warning poc-alert-compact" style="margin-top:14px">' +
+            '<i class="fa fa-lock"></i> Fatura fechada — valores congelados.<br>' +
+            '<span style="font-size:12px">Para aplicar descontos ou ajustes, use o botão <strong>Reabrir faturamento</strong> no rodapé. A fatura voltará para Em aberto e poderá ser editada antes de ser reenviada.</span>' +
+            '</div>';
       var adjHistory = BillingStore.historyForCycle(c.id).filter(function (h) { return h.action === "adjustment"; });
       var histHtml = adjHistory.length
         ? '<h5 style="margin-top:18px">Histórico de ajustes</h5><ul class="bill-timeline">' + adjHistory.map(function (h) {
@@ -1076,7 +1162,12 @@ var BillingPages = {
       var detailFooterExtra = editable
         ? '<button type="button" class="btn btn-warning btn-advance-cycle" data-id="' + cycleId + '" style="float:left"><i class="fa fa-bolt"></i> Antecipar faturamento</button>' +
           '<button type="button" class="btn btn-primary btn-close-send-cycle" data-id="' + cycleId + '" style="float:left;margin-left:6px"><i class="fa fa-lock"></i> Fechar e enviar</button>'
-        : "";
+        : BillingStore.isClosedGroupStatus(c.status)
+          ? (["closed", "sent", "resent", "overdue"].indexOf(c.status) >= 0
+              ? '<button type="button" class="btn btn-default btn-send-cycle" data-id="' + cycleId + '" style="float:left"><i class="fa fa-repeat"></i> Reenviar</button>'
+              : "") +
+            '<button type="button" class="btn btn-warning btn-reopen-cycle" data-id="' + cycleId + '" style="float:left;margin-left:6px"><i class="fa fa-undo"></i> Reabrir faturamento</button>'
+          : "";
       BillingUI.openModal("Detalhes do faturamento — <code>" + BillingUI.esc(c.billing_code || "s/código") + "</code>", detailHeaderHtml(c) + navHtml + panesHtml, null, { size: "xl", hideSave: true, extraFooter: detailFooterExtra });
 
       setTimeout(function () {
@@ -1255,7 +1346,7 @@ var BillingPages = {
             var d = BillingStore.getData();
             var cy = d.cycles.filter(function (x) { return x.id === cycleId; })[0];
             if (!cy || !BillingStore.isOpenCycleStatus(cy.status)) {
-              BillingUI.toast("Faturamento fechado não permite ajustes.", "error");
+              BillingUI.toast("Reabra a fatura antes de aplicar ajustes.", "error");
               return;
             }
             if (disc > Number(cy.gross_amount)) { BillingUI.toast("Desconto não pode exceder o valor bruto.", "error"); return; }
@@ -1335,7 +1426,7 @@ var BillingPages = {
         BillingUI.toast("Empresa sem e-mail válido. Cadastre o e-mail antes de fechar.", "error");
         return;
       }
-      var today = TODAY;
+      var today = new Date().toISOString().slice(0, 10);
       var earlyClose = cy.reference_end > today;
       var msg = "Fechar e enviar fatura " + (cy.billing_code || "") + " para " + emailTo + "?";
       if (earlyClose) {
@@ -1432,10 +1523,37 @@ var BillingPages = {
       }
       if (!confirm("Marcar esta fatura como Pago / Finalizado?")) return;
       cy.status = "paid";
-      addHistory(d, cy.id, "closed", "Fatura marcada como Pago / Finalizado");
+      addHistory(d, cy.id, "paid", "Fatura marcada como Pago / Finalizado");
       BillingStore.setData(d);
       render();
       BillingUI.toast("Fatura marcada como Pago / Finalizado.", "success");
+    }
+
+    function reopenCycle(cycleId) {
+      var d = BillingStore.getData();
+      var cy = d.cycles.filter(function (x) { return x.id === cycleId; })[0];
+      if (!cy) return;
+      if (!BillingStore.isClosedGroupStatus(cy.status)) {
+        BillingUI.toast("Apenas faturas fechadas podem ser reabertas.", "error");
+        return;
+      }
+      var prevStatus = cy.status;
+      if (!confirm(
+        "Reabrir a fatura " + (cy.billing_code || cy.id) + "?\n\n" +
+        "A fatura voltará para Em aberto, permitindo edição de notas, ajustes e descontos.\n" +
+        "Após os ajustes, utilize Fechar e enviar para reenviá-la ao cliente."
+      )) return;
+      cy.status = "open";
+      cy.closed_at = null;
+      cy.sent_at = null;
+      cy.last_sent_at = null;
+      cy.boleto_id = null;
+      cy.portal_link = "";
+      addHistory(d, cy.id, "created", "Fatura reaberta (estava " + prevStatus + ") — ajustes e reenvio pendentes");
+      BillingStore.setData(d);
+      jQuery(".poc_modal").modal("hide");
+      render();
+      BillingUI.toast("Fatura reaberta. Faça os ajustes necessários e use Fechar e enviar.", "warn");
     }
 
     function populateFilters() {
@@ -1485,6 +1603,8 @@ var BillingPages = {
       if (advance) { e.preventDefault(); jQuery(".poc_modal").modal("hide"); openAdvanceModal(advance.dataset.id); return; }
       var paid = t.closest(".btn-paid-cycle");
       if (paid) { e.preventDefault(); markAsPaid(paid.dataset.id); return; }
+      var reopen = t.closest(".btn-reopen-cycle");
+      if (reopen) { e.preventDefault(); jQuery(".poc_modal").modal("hide"); reopenCycle(reopen.dataset.id); return; }
     });
 
     ["flt-c-company", "flt-c-fleet", "flt-c-config", "flt-c-status", "flt-c-due", "flt-c-min", "flt-c-max", "flt-c-sent"].forEach(function (id) {

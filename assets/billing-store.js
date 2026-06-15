@@ -1,5 +1,5 @@
 var BillingStore = (function () {
-  var KEY = "poc_billing_v7";
+  var KEY = "poc_billing_v10";
 
   function defaultData() {
     return {
@@ -118,12 +118,21 @@ var BillingStore = (function () {
         }
       ],
       links: [
-        { id: "lnk1", configuration_id: "cfg1", customer_id: "cli1", company_id: "emp1", fleet_id: "fr1", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" },
-        { id: "lnk2", configuration_id: "cfg1", customer_id: "cli1", company_id: "emp1", fleet_id: "fr4", specific_adjustment_type: "increase", specific_adjustment_mode: "percentage", specific_adjustment_value: 1, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" },
-        { id: "lnk3", configuration_id: "cfg1", customer_id: "cli2", company_id: "emp2", fleet_id: "fr2", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: 20000, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" },
-        { id: "lnk4", configuration_id: "cfg1", customer_id: "cli3", company_id: "emp3", fleet_id: "fr3", specific_adjustment_type: "discount", specific_adjustment_mode: "fixed_amount", specific_adjustment_value: 150, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" },
-        { id: "lnk5", configuration_id: "cfg2", customer_id: "cli2", company_id: "emp2", fleet_id: "fr2", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" },
-        { id: "lnk6", configuration_id: "cfg3", customer_id: "cli3", company_id: "emp4", fleet_id: "fr5", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: 8000, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active" }
+        { id: "lnk1", configuration_id: "cfg1", customer_id: "cli1", company_id: "emp1", fleet_id: "fr1", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active",
+          discount_rules: [
+            { id: "dr_lnk1_1", target_type: "product", target_name: "Diesel S10", discount_type: "fixed_per_unit", discount_unit: "L", discount_value: 0.02, priority: 1 }
+          ]
+        },
+        { id: "lnk2", configuration_id: "cfg1", customer_id: "cli1", company_id: "emp1", fleet_id: "fr4", specific_adjustment_type: "increase", specific_adjustment_mode: "percentage", specific_adjustment_value: 1, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active", discount_rules: [] },
+        { id: "lnk3", configuration_id: "cfg1", customer_id: "cli2", company_id: "emp2", fleet_id: "fr2", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: 20000, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active",
+          discount_rules: [
+            { id: "dr_lnk3_1", target_type: "product", target_name: "Diesel S10", discount_type: "fixed_per_unit", discount_unit: "L", discount_value: 0.03, priority: 1 },
+            { id: "dr_lnk3_2", target_type: "category", target_name: "Combustíveis", discount_type: "percentage", discount_unit: "L", discount_value: 1.5, priority: 2 }
+          ]
+        },
+        { id: "lnk4", configuration_id: "cfg1", customer_id: "cli3", company_id: "emp3", fleet_id: "fr3", specific_adjustment_type: "discount", specific_adjustment_mode: "fixed_amount", specific_adjustment_value: 150, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active", discount_rules: [] },
+        { id: "lnk5", configuration_id: "cfg2", customer_id: "cli2", company_id: "emp2", fleet_id: "fr2", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: null, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active", discount_rules: [] },
+        { id: "lnk6", configuration_id: "cfg3", customer_id: "cli3", company_id: "emp4", fleet_id: "fr5", specific_adjustment_type: "none", specific_adjustment_mode: "percentage", specific_adjustment_value: 0, specific_credit_limit: 8000, valid_from: "2026-01-01", valid_until: "2026-12-31", status: "active", discount_rules: [] }
       ],
       cycles: [
         {
