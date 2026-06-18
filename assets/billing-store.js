@@ -1,5 +1,5 @@
 var BillingStore = (function () {
-  var KEY = "poc_billing_v10";
+  var KEY = "poc_billing_v11";
 
   function defaultData() {
     return {
@@ -34,6 +34,8 @@ var BillingStore = (function () {
           adjustment_mode: "percentage",
           adjustment_value: 0,
           credit_limit: null,
+          due_days_after_period: 10,
+          block_on_overdue: true,
           valid_from: "2026-01-01",
           valid_until: "2026-12-31",
           status: "active",
@@ -56,6 +58,8 @@ var BillingStore = (function () {
           adjustment_mode: "percentage",
           adjustment_value: 0,
           credit_limit: 30000,
+          due_days_after_period: 7,
+          block_on_overdue: false,
           valid_from: "2026-01-01",
           valid_until: "2026-12-31",
           status: "active",
@@ -74,6 +78,8 @@ var BillingStore = (function () {
           adjustment_mode: "percentage",
           adjustment_value: 0,
           credit_limit: 12000,
+          due_days_after_period: 5,
+          block_on_overdue: false,
           valid_from: "2026-01-01",
           valid_until: "2026-12-31",
           status: "active",
@@ -92,6 +98,8 @@ var BillingStore = (function () {
           adjustment_mode: "percentage",
           adjustment_value: 0,
           credit_limit: null,
+          due_days_after_period: 15,
+          block_on_overdue: true,
           valid_from: "2026-01-01",
           valid_until: "2026-12-31",
           status: "active",
@@ -110,6 +118,8 @@ var BillingStore = (function () {
           adjustment_mode: "percentage",
           adjustment_value: 0,
           credit_limit: null,
+          due_days_after_period: 10,
+          block_on_overdue: false,
           valid_from: "2025-01-01",
           valid_until: "2025-12-31",
           status: "inactive",
@@ -346,6 +356,9 @@ var BillingStore = (function () {
     if (cfg.credit_limit !== null && cfg.credit_limit !== undefined && cfg.credit_limit !== "" && Number(cfg.credit_limit) < 0) {
       return "Limite de crédito deve ser zero ou positivo.";
     }
+    var dueDays = parseInt(cfg.due_days_after_period, 10);
+    if (isNaN(dueDays) || dueDays < 1 || dueDays > 365) return "Vencimento deve ser entre 1 e 365 dias.";
+
     var dup = load().configurations.filter(function (c) {
       return c.id !== excludeId && !c.deleted_at && c.name.toLowerCase() === String(cfg.name).trim().toLowerCase();
     })[0];
@@ -424,17 +437,26 @@ var BillingStore = (function () {
     })[0];
   }
 
+  function addDaysToDate(dateStr, days) {
+    var d = new Date(dateStr + "T00:00:00");
+    d.setDate(d.getDate() + (days || 0));
+    return d.toISOString().slice(0, 10);
+  }
+
   function referencePeriodForConfig(cfg) {
-    if (!cfg) return { start: "2026-05-01", end: "2026-05-31", due: "2026-06-10" };
-    if (cfg.billing_period === "biweekly") return { start: "2026-05-16", end: "2026-05-31", due: "2026-06-05" };
-    if (cfg.billing_period === "weekly") return { start: "2026-05-26", end: "2026-06-01", due: "2026-06-08" };
-    if (cfg.billing_period === "daily") return { start: "2026-06-03", end: "2026-06-03", due: "2026-06-04" };
+    var dueDays = (cfg && cfg.due_days_after_period > 0) ? cfg.due_days_after_period : 10;
+    if (!cfg) return { start: "2026-05-01", end: "2026-05-31", due: addDaysToDate("2026-05-31", 10) };
+    if (cfg.billing_period === "biweekly") { var e = "2026-05-31"; return { start: "2026-05-16", end: e, due: addDaysToDate(e, dueDays) }; }
+    if (cfg.billing_period === "weekly")   { var e = "2026-06-01"; return { start: "2026-05-26", end: e, due: addDaysToDate(e, dueDays) }; }
+    if (cfg.billing_period === "daily")    { var e = "2026-06-03"; return { start: "2026-06-03", end: e, due: addDaysToDate(e, dueDays) }; }
     if (cfg.billing_period === "custom") {
       var sd = String(cfg.period_start_day || 1).padStart(2, "0");
       var ed = String(cfg.period_end_day || 28).padStart(2, "0");
-      return { start: "2026-05-" + sd, end: "2026-06-" + ed, due: "2026-06-15" };
+      var endDate = "2026-06-" + ed;
+      return { start: "2026-05-" + sd, end: endDate, due: addDaysToDate(endDate, dueDays) };
     }
-    return { start: "2026-05-01", end: "2026-05-31", due: "2026-06-10" };
+    var endDate = "2026-05-31";
+    return { start: "2026-05-01", end: endDate, due: addDaysToDate(endDate, dueDays) };
   }
 
   function generateBillingCode(data, refStart) {

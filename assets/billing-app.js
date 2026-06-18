@@ -229,6 +229,12 @@ var BillingPages = {
             return '<span class="label label-default"><i class="fa fa-tag"></i> ' + rules.length + ' desconto' + (rules.length > 1 ? "s" : "") + '</span>';
           })() + "</td>" +
           "<td>" + BillingLabels.creditLimit(c.credit_limit) + "</td>" +
+          "<td>" + (function () {
+            var days = c.due_days_after_period || 10;
+            var block = c.block_on_overdue;
+            return '<span title="Vencimento: ' + days + ' dias após fechamento">' + days + ' dias</span>' +
+              (block ? ' <span class="label label-danger" title="Bloqueia PDV em caso de inadimplência"><i class="fa fa-ban"></i> PDV</span>' : '');
+          })() + "</td>" +
           "<td>" + BillingStore.formatDateRange(c.valid_from, c.valid_until) + "</td>" +
           "<td>" + BillingStore.countDistinctCompanies(c.id) + "</td>" +
           "<td>" + BillingStore.countDistinctFleets(c.id) + "</td>" +
@@ -336,6 +342,22 @@ var BillingPages = {
         "</select></div></div>" +
         '<div class="col-md-12"><div class="form-group"><label>Observações</label><textarea class="form-control" id="cf_notes" rows="2">' + BillingUI.esc(c.notes || "") + "</textarea></div></div>" +
         "</div>" +
+        '<hr style="margin:10px 0"><h5 style="margin-bottom:10px"><i class="fa fa-calendar-check-o"></i> Cobrança e inadimplência</h5>' +
+        '<div class="row">' +
+        '<div class="col-md-4"><div class="form-group"><label>Vencimento da fatura <span class="text-danger">*</span> <small class="text-muted">(dias após o fechamento)</small></label>' +
+        '<div class="input-group"><input type="number" min="1" max="365" class="form-control" id="cf_due_days" value="' + (c.due_days_after_period || 10) + '" placeholder="Ex: 10"><span class="input-group-addon">dias</span></div>' +
+        '<p class="help-block" style="margin:4px 0 0;font-size:11px">Ex.: 10 dias → fatura com vencimento em 10 dias após o fechamento do período.</p>' +
+        "</div></div>" +
+        '<div class="col-md-8"><div class="form-group"><label>Bloqueio no PDV por inadimplência</label>' +
+        '<div class="poc-toggle-wrap" style="margin-top:6px">' +
+        '<label class="poc-toggle-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:normal">' +
+        '<input type="checkbox" id="cf_block_overdue" style="width:18px;height:18px;cursor:pointer"' + (c.block_on_overdue ? " checked" : "") + '>' +
+        '<span>Bloquear vendas faturadas no PDV quando o cliente estiver com fatura <strong>Vencida</strong></span>' +
+        '</label>' +
+        '</div>' +
+        '<p class="help-block" style="margin:4px 0 0;font-size:11px"><i class="fa fa-info-circle"></i> Quando ativado, o PDV impedirá novas vendas faturadas para essa frota enquanto houver fatura em atraso.</p>' +
+        "</div></div>" +
+        "</div>" +
         '<hr style="margin:10px 0"><h5 style="margin-bottom:10px"><i class="fa fa-tag"></i> Descontos por produto / preço especial</h5>' +
         '<div class="alert alert-info poc-alert-compact"><i class="fa fa-info-circle"></i> Defina descontos por produto ou categoria, como R$ 0,02/L no Diesel S10. Equivale às regras de <strong>Vendas → Descontos</strong> e é aplicado no cálculo do faturamento.</div>' +
         '<input type="hidden" id="cf_discount_rules" value="' + rulesJson + '">' +
@@ -430,6 +452,8 @@ var BillingPages = {
         adjustment_mode: "percentage",
         adjustment_value: 0,
         credit_limit: g("cf_limit") === "" ? null : Number(g("cf_limit")),
+        due_days_after_period: parseInt(g("cf_due_days"), 10) || 10,
+        block_on_overdue: !!(document.getElementById("cf_block_overdue") && document.getElementById("cf_block_overdue").checked),
         valid_from: g("cf_from"),
         valid_until: g("cf_to"),
         status: g("cf_status"),
